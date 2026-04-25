@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import "./PayPeriodForm.css";
 
 const formatDate = (date) => {
@@ -18,31 +18,65 @@ const formatDisplayDate = (dateString) => {
   });
 };
 
-function PayPeriodForm({ onAddPayPeriod }) {
+const parseLocalDate = (dateString) => {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
+function PayPeriodForm({ onAddPayPeriod, payPeriods, resetVersion }) {
   const [periodStartDate, setPeriodStartDate] = useState("");
   const [paydayOffsetDays, setPaydayOffsetDays] = useState("14");
   const [expectedAmount, setExpectedAmount] = useState("");
 
-  const computedPeriod = useMemo(() => {
-    if (!periodStartDate || !paydayOffsetDays) {
+  useEffect(() => {
+    setPeriodStartDate("");
+    setPaydayOffsetDays("14");
+    setExpectedAmount("");
+  }, [resetVersion]);
+
+  const latestPeriod = useMemo(() => {
+    if (!payPeriods.length) {
       return null;
     }
 
-    const [year, month, day] = periodStartDate.split("-").map(Number);
-    const periodStart = new Date(year, month - 1, day);
+    return [...payPeriods].sort(
+      (a, b) =>
+        parseLocalDate(b.workWeekStart) - parseLocalDate(a.workWeekStart),
+    )[0];
+  }, [payPeriods]);
+
+  const isFirstPeriod = !latestPeriod;
+
+  const computedPeriod = useMemo(() => {
+    if (isFirstPeriod && (!periodStartDate || !paydayOffsetDays)) {
+      return null;
+    }
+
+    const resolvedOffsetDays = isFirstPeriod
+      ? Number(paydayOffsetDays)
+      : latestPeriod.paydayOffsetDays || 14;
+
+    const periodStart = isFirstPeriod
+      ? parseLocalDate(periodStartDate)
+      : new Date(parseLocalDate(latestPeriod.workWeekStart));
+
+    if (!isFirstPeriod) {
+      periodStart.setDate(periodStart.getDate() + 14);
+    }
+
     const periodEnd = new Date(periodStart);
     periodEnd.setDate(periodEnd.getDate() + 13);
 
     const payday = new Date(periodEnd);
-    payday.setDate(payday.getDate() + Number(paydayOffsetDays));
+    payday.setDate(payday.getDate() + resolvedOffsetDays);
 
     return {
       workWeekStart: formatDate(periodStart),
       workWeekEnd: formatDate(periodEnd),
       expectedPayday: formatDate(payday),
-      paydayOffsetDays: Number(paydayOffsetDays),
+      paydayOffsetDays: resolvedOffsetDays,
     };
-  }, [paydayOffsetDays, periodStartDate]);
+  }, [isFirstPeriod, latestPeriod, paydayOffsetDays, periodStartDate]);
 
   const paydayOffsetOptions = useMemo(
     () => Array.from({ length: 30 }, (_, index) => index + 1),
@@ -67,8 +101,10 @@ function PayPeriodForm({ onAddPayPeriod }) {
     });
 
     // Reset form
-    setPeriodStartDate("");
-    setPaydayOffsetDays("14");
+    if (isFirstPeriod) {
+      setPeriodStartDate("");
+      setPaydayOffsetDays("14");
+    }
     setExpectedAmount("");
   };
 
@@ -76,46 +112,73 @@ function PayPeriodForm({ onAddPayPeriod }) {
     <div className="pay-period-form">
       <h2>Add New Pay Period</h2>
       <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="periodStartDate">Pay Period Start Date:</label>
-          <input
-            id="periodStartDate"
-            type="date"
-            value={periodStartDate}
-            onChange={(e) => setPeriodStartDate(e.target.value)}
-            required
-          />
-          {computedPeriod && (
-            <small className="helper-text">
-              Biweekly range: {formatDisplayDate(computedPeriod.workWeekStart)}{" "}
-              - {formatDisplayDate(computedPeriod.workWeekEnd)}
-            </small>
-          )}
-        </div>
+        {isFirstPeriod ? (
+          <>
+            <div className="form-group">
+              <label htmlFor="periodStartDate">
+                Initial Pay Period Start Date:
+              </label>
+              <input
+                id="periodStartDate"
+                type="date"
+                value={periodStartDate}
+                onChange={(e) => setPeriodStartDate(e.target.value)}
+                required
+              />
+              {computedPeriod && (
+                <small className="helper-text">
+                  Biweekly range:{" "}
+                  {formatDisplayDate(computedPeriod.workWeekStart)} -{" "}
+                  {formatDisplayDate(computedPeriod.workWeekEnd)}
+                </small>
+              )}
+            </div>
 
-        <div className="form-group">
-          <label htmlFor="paydayOffsetDays">
-            Payday Offset After Period End:
-          </label>
-          <select
-            id="paydayOffsetDays"
-            value={paydayOffsetDays}
-            onChange={(e) => setPaydayOffsetDays(e.target.value)}
-            required
-          >
-            {paydayOffsetOptions.map((days) => (
-              <option key={days} value={days}>
-                {days} day{days === 1 ? "" : "s"}
-              </option>
-            ))}
-          </select>
-          {computedPeriod && (
-            <small className="helper-text">
-              Expected payday:{" "}
-              {formatDisplayDate(computedPeriod.expectedPayday)}
-            </small>
-          )}
-        </div>
+            <div className="form-group">
+              <label htmlFor="paydayOffsetDays">
+                Payday Offset After Period End:
+              </label>
+              <select
+                id="paydayOffsetDays"
+                value={paydayOffsetDays}
+                onChange={(e) => setPaydayOffsetDays(e.target.value)}
+                required
+              >
+                {paydayOffsetOptions.map((days) => (
+                  <option key={days} value={days}>
+                    {days} day{days === 1 ? "" : "s"}
+                  </option>
+                ))}
+              </select>
+              {computedPeriod && (
+                <small className="helper-text">
+                  Expected payday:{" "}
+                  {formatDisplayDate(computedPeriod.expectedPayday)}
+                </small>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="form-group">
+            <label>Next Pay Period:</label>
+            {computedPeriod && (
+              <>
+                <small className="helper-text">
+                  Biweekly range:{" "}
+                  {formatDisplayDate(computedPeriod.workWeekStart)} -{" "}
+                  {formatDisplayDate(computedPeriod.workWeekEnd)}
+                </small>
+                <small className="helper-text">
+                  Expected payday:{" "}
+                  {formatDisplayDate(computedPeriod.expectedPayday)} (
+                  {computedPeriod.paydayOffsetDays} day
+                  {computedPeriod.paydayOffsetDays === 1 ? "" : "s"} after
+                  period end)
+                </small>
+              </>
+            )}
+          </div>
+        )}
 
         <div className="form-group">
           <label htmlFor="expectedAmount">Expected Amount ($):</label>

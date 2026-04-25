@@ -63,6 +63,11 @@ h1 {
   font-size: 0.95rem;
 }
 
+.session-actions {
+  display: flex;
+  gap: 10px;
+}
+
 .auth-helper {
   color: #4f4f4f;
   text-align: center;
@@ -96,14 +101,30 @@ h1 {
   word-break: break-all;
 }
 
+.btn-reset,
 .btn-signout {
   border: none;
-  background: #e53935;
   color: #fff;
   border-radius: 8px;
   padding: 8px 12px;
   cursor: pointer;
   font-weight: 600;
+}
+
+.btn-reset {
+  background: #6c757d;
+}
+
+.btn-reset:hover {
+  background: #5a6268;
+}
+
+.btn-reset:active {
+  background: #4f565c;
+}
+
+.btn-signout {
+  background: #e53935;
 }
 
 .btn-signout:hover {
@@ -122,5 +143,10 @@ h1 {
   .session-bar {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .session-actions {
+    width: 100%;
+    flex-direction: column;
   }
 }

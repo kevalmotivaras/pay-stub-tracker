@@ -31,6 +31,7 @@ const dbToLocal = (row) => ({
 
 function App() {
   const [payPeriods, setPayPeriods] = useState([]);
+  const [formResetVersion, setFormResetVersion] = useState(0);
   const [session, setSession] = useState(null);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -222,6 +223,32 @@ function App() {
     );
   };
 
+  const resetAllData = async () => {
+    if (!supabase || !session?.user?.id) return;
+
+    const confirmed = window.confirm(
+      "Reset all pay period data? This will delete every saved period and payment for your account.",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from("pay_periods")
+      .delete()
+      .eq("user_id", session.user.id);
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    localStorage.removeItem("payPeriods");
+    setPayPeriods([]);
+    setFormResetVersion((prev) => prev + 1);
+  };
+
   const handleAuthSubmit = async (event) => {
     event.preventDefault();
     if (!supabase) return;
@@ -367,12 +394,25 @@ function App() {
           <span className="session-email">
             Signed in as {session.user.email}
           </span>
-          <button type="button" className="btn-signout" onClick={handleSignOut}>
-            Sign Out
-          </button>
+          <div className="session-actions">
+            <button type="button" className="btn-reset" onClick={resetAllData}>
+              Reset Data
+            </button>
+            <button
+              type="button"
+              className="btn-signout"
+              onClick={handleSignOut}
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
 
-        <PayPeriodForm onAddPayPeriod={addPayPeriod} />
+        <PayPeriodForm
+          onAddPayPeriod={addPayPeriod}
+          payPeriods={payPeriods}
+          resetVersion={formResetVersion}
+        />
         <PayPeriodList
           payPeriods={payPeriods}
           onDeletePayPeriod={deletePayPeriod}
