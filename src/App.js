@@ -114,7 +114,7 @@ function App() {
     const { data, error } = await supabase
       .from("pay_periods")
       .select("*")
-        .eq("user_id", userId)
+      .eq("user_id", userId)
       .order("expected_payday", { ascending: false });
 
     if (error) {
@@ -349,7 +349,9 @@ function App() {
         </p>
 
         <div className="session-bar">
-          <span className="session-email">Signed in as {session.user.email}</span>
+          <span className="session-email">
+            Signed in as {session.user.email}
+          </span>
           <button type="button" className="btn-signout" onClick={handleSignOut}>
             Sign Out
           </button>

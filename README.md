@@ -50,16 +50,56 @@ Make sure your `pay_periods` table has a `user_id` column and Row Level Security
 
 Run this in Supabase SQL Editor (adjust only if your schema differs):
 
+Legacy-data note: `auth.uid()` is `NULL` inside SQL Editor sessions, so do not use it to backfill old rows.
+Pick the account that should own existing rows by setting `owner_email` below.
+
 ```sql
+-- Quick sanity check (optional)
+select column_name
+from information_schema.columns
+where table_schema = 'public'
+  and table_name = 'pay_periods'
+  and column_name = 'user_id';
+
 alter table public.pay_periods
 	add column if not exists user_id uuid references auth.users(id) on delete cascade;
 
-update public.pay_periods
-set user_id = auth.uid()
-where user_id is null;
+do $$
+declare
+	owner_email text := 'your-email@example.com';
+	owner_id uuid;
+begin
+	if not exists (
+		select 1
+		from information_schema.columns
+		where table_schema = 'public'
+			and table_name = 'pay_periods'
+			and column_name = 'user_id'
+	) then
+		raise exception 'Column public.pay_periods.user_id was not created. Check table name/schema and rerun.';
+	end if;
+
+	select id
+	into owner_id
+	from auth.users
+	where email = owner_email
+	order by created_at asc
+	limit 1;
+
+	if owner_id is null then
+		raise exception 'No auth.users row found for %', owner_email;
+	end if;
+
+	update public.pay_periods
+	set user_id = owner_id
+	where user_id is null;
+end $$;
 
 alter table public.pay_periods
 	alter column user_id set not null;
+
+alter table public.pay_periods
+	alter column user_id set default auth.uid();
 
 alter table public.pay_periods enable row level security;
 
