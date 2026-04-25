@@ -1,0 +1,28 @@
+.pay-period-list {
+  margin-top: 30px;
+}
+
+.pay-period-list h2 {
+  color: #495057;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+}
+
+.period-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: #f8f9fa;
+  border-radius: 15px;
+  border: 2px dashed #dee2e6;
+}
+
+.empty-state p {
+  color: #6c757d;
+  font-size: 1.1rem;
+}
