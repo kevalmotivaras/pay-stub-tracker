@@ -4,7 +4,7 @@ A React application to help you track biweekly paystubs, manage payment delays, 
 
 ## Features
 
-- ✅ Track biweekly pay periods (Wednesday to Tuesday work weeks)
+- ✅ Track custom biweekly pay periods from any start date
 - 🔐 Email/password authentication with Supabase Auth
 - 🛡️ User-isolated data model (each account only accesses its own records)
 - 📅 Set expected payday (Tuesdays)
@@ -148,7 +148,7 @@ Your site URL:
 
 ## How to Use
 
-1. **Add a Pay Period**: Enter your work week start date (Wednesday), expected payday (Tuesday), and expected amount
+1. **Add a Pay Period**: Enter the pay period start date, choose the payday offset from 1 to 30 days after the period ends, and enter the expected amount
 2. **Track Payments**: Click "Add Actual Payment" to record when you actually receive payments
 3. **Monitor Status**: Cards automatically show status and calculate delays
 4. **Split Payments**: Add multiple actual payments if your pay is split into different amounts

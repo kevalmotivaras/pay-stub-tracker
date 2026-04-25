@@ -1,116 +1,118 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import "./PayPeriodForm.css";
 
+const formatDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatDisplayDate = (dateString) => {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
 function PayPeriodForm({ onAddPayPeriod }) {
-  const [selectedPeriod, setSelectedPeriod] = useState("");
+  const [periodStartDate, setPeriodStartDate] = useState("");
+  const [paydayOffsetDays, setPaydayOffsetDays] = useState("14");
   const [expectedAmount, setExpectedAmount] = useState("");
 
-  // Generate pay periods starting from Oct 22, 2025
-  const payPeriods = useMemo(() => {
-    const periods = [];
-    // Use local date to avoid timezone issues
-    const firstPeriodStart = new Date(2025, 9, 22); // Wednesday, Oct 22, 2025 (month is 0-indexed)
-
-    // Generate periods for 2 years (52 pay periods)
-    for (let i = 0; i < 52; i++) {
-      const periodStart = new Date(firstPeriodStart);
-      periodStart.setDate(periodStart.getDate() + i * 14); // Add 2 weeks for each period
-
-      const periodEnd = new Date(periodStart);
-      periodEnd.setDate(periodEnd.getDate() + 13); // 13 days later (2-week period)
-
-      // Payday is 2 weeks after the work period ends (14 days after period end)
-      const payday = new Date(periodEnd);
-      payday.setDate(payday.getDate() + 15);
-
-      // Format dates as YYYY-MM-DD in local time
-      const formatDate = (date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-      };
-
-      periods.push({
-        id: i,
-        workWeekStart: formatDate(periodStart),
-        workWeekEnd: formatDate(periodEnd),
-        expectedPayday: formatDate(payday),
-        label: `${periodStart.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })} - ${periodEnd.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })}`,
-      });
+  const computedPeriod = useMemo(() => {
+    if (!periodStartDate || !paydayOffsetDays) {
+      return null;
     }
 
-    return periods;
-  }, []);
+    const [year, month, day] = periodStartDate.split("-").map(Number);
+    const periodStart = new Date(year, month - 1, day);
+    const periodEnd = new Date(periodStart);
+    periodEnd.setDate(periodEnd.getDate() + 13);
+
+    const payday = new Date(periodEnd);
+    payday.setDate(payday.getDate() + Number(paydayOffsetDays));
+
+    return {
+      workWeekStart: formatDate(periodStart),
+      workWeekEnd: formatDate(periodEnd),
+      expectedPayday: formatDate(payday),
+      paydayOffsetDays: Number(paydayOffsetDays),
+    };
+  }, [paydayOffsetDays, periodStartDate]);
+
+  const paydayOffsetOptions = useMemo(
+    () => Array.from({ length: 30 }, (_, index) => index + 1),
+    [],
+  );
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!selectedPeriod || !expectedAmount) {
+    if (!computedPeriod || !expectedAmount) {
       alert("Please fill in all fields");
       return;
     }
 
-    const period = payPeriods.find((p) => p.id === parseInt(selectedPeriod));
-
     onAddPayPeriod({
-      workWeekStart: period.workWeekStart,
-      workWeekEnd: period.workWeekEnd,
-      expectedPayday: period.expectedPayday,
+      workWeekStart: computedPeriod.workWeekStart,
+      workWeekEnd: computedPeriod.workWeekEnd,
+      expectedPayday: computedPeriod.expectedPayday,
+      paydayOffsetDays: computedPeriod.paydayOffsetDays,
       expectedAmount: parseFloat(expectedAmount),
       actualPayments: [],
     });
 
     // Reset form
-    setSelectedPeriod("");
+    setPeriodStartDate("");
+    setPaydayOffsetDays("14");
     setExpectedAmount("");
   };
-
-  const selectedPeriodData = payPeriods.find(
-    (p) => p.id === parseInt(selectedPeriod),
-  );
 
   return (
     <div className="pay-period-form">
       <h2>Add New Pay Period</h2>
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="payPeriod">
-            Select Pay Period (Wednesday - Tuesday):
+          <label htmlFor="periodStartDate">Pay Period Start Date:</label>
+          <input
+            id="periodStartDate"
+            type="date"
+            value={periodStartDate}
+            onChange={(e) => setPeriodStartDate(e.target.value)}
+            required
+          />
+          {computedPeriod && (
+            <small className="helper-text">
+              Biweekly range: {formatDisplayDate(computedPeriod.workWeekStart)}{" "}
+              - {formatDisplayDate(computedPeriod.workWeekEnd)}
+            </small>
+          )}
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="paydayOffsetDays">
+            Payday Offset After Period End:
           </label>
           <select
-            id="payPeriod"
-            value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
+            id="paydayOffsetDays"
+            value={paydayOffsetDays}
+            onChange={(e) => setPaydayOffsetDays(e.target.value)}
             required
           >
-            <option value="">-- Select a pay period --</option>
-            {payPeriods.map((period) => (
-              <option key={period.id} value={period.id}>
-                {period.label}
+            {paydayOffsetOptions.map((days) => (
+              <option key={days} value={days}>
+                {days} day{days === 1 ? "" : "s"}
               </option>
             ))}
           </select>
-          {selectedPeriodData && (
+          {computedPeriod && (
             <small className="helper-text">
-              Expected Payday:{" "}
-              {new Date(selectedPeriodData.expectedPayday).toLocaleDateString(
-                "en-US",
-                {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                },
-              )}
+              Expected payday:{" "}
+              {formatDisplayDate(computedPeriod.expectedPayday)}
             </small>
           )}
         </div>

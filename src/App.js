@@ -4,12 +4,27 @@ import PayPeriodForm from "./components/PayPeriodForm";
 import PayPeriodList from "./components/PayPeriodList";
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
 
+const parseLocalDate = (dateString) => {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const getPaydayOffsetDays = (workWeekEnd, expectedPayday) => {
+  if (!workWeekEnd || !expectedPayday) {
+    return null;
+  }
+
+  const diffTime = parseLocalDate(expectedPayday) - parseLocalDate(workWeekEnd);
+  return Math.round(diffTime / (1000 * 60 * 60 * 24));
+};
+
 // Convert a Supabase DB row to the shape the UI expects
 const dbToLocal = (row) => ({
   id: row.id,
   workWeekStart: row.work_week_start,
   workWeekEnd: row.work_week_end,
   expectedPayday: row.expected_payday,
+  paydayOffsetDays: getPaydayOffsetDays(row.work_week_end, row.expected_payday),
   expectedAmount: row.expected_amount,
   actualPayments: row.actual_payments || [],
 });

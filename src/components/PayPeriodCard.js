@@ -100,6 +100,10 @@ function PayPeriodCard({
   const status = getStatus();
   const totalReceived = calculateTotalReceived();
   const remaining = period.expectedAmount - totalReceived;
+  const paydayOffsetLabel =
+    typeof period.paydayOffsetDays === "number" && period.paydayOffsetDays > 0
+      ? `${period.paydayOffsetDays} day${period.paydayOffsetDays === 1 ? "" : "s"} after period end`
+      : null;
 
   return (
     <div className={`pay-period-card ${status.class}`}>
@@ -116,7 +120,7 @@ function PayPeriodCard({
       <div className="card-content">
         <div className="info-grid">
           <div className="info-item">
-            <span className="info-label">📅 Work Week:</span>
+            <span className="info-label">📅 Pay Period:</span>
             <span className="info-value">
               {formatDate(period.workWeekStart)} →{" "}
               {formatDate(period.workWeekEnd)}
@@ -127,6 +131,7 @@ function PayPeriodCard({
             <span className="info-label">💵 Expected Payday:</span>
             <span className="info-value">
               {formatDate(period.expectedPayday)}
+              {paydayOffsetLabel ? ` (${paydayOffsetLabel})` : ""}
             </span>
           </div>
 
